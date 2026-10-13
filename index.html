@@ -1,3 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>CaoKy Game Hub</title>
+
+<style>
+
+body{
+    margin:0;
+    padding:12px;
+    background:#eef2f7;
+    font-family:Arial, sans-serif;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:15px;
+    font-size:26px;
+}
+
+/* ===== LEVEL 1 ===== */
+
+.level1-block{
+    background:#dbeafe;
+    border-radius:10px;
+    padding:10px;
+    margin-bottom:15px;
+}
+
+.group-title{
+    font-size:20px;
+    font-weight:bold;
+    margin-bottom:10px;
+    color:#1e3a8a;
+}
+
+/* ===== LEVEL 2 ===== */
+
+.level2-container{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+}
+
+.subgroup{
+    background:#ffffff;
+    border-radius:8px;
+    padding:8px;
+    min-width:160px;
+    max-width:220px;
+    flex:1 1 180px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* ===== TITLE LEVEL 2 ===== */
+
+.subgroup-title{
+    font-size:13px;
+    font-weight:bold;
+    margin-bottom:6px;
+    color:#111827;
+
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+/* ===== LEVEL 3 ===== */
+
+.exercise-buttons{
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+}
+
+.exercise-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+
+    width:28px;
+    height:28px;
+
+    background:#4CAF50;
+    color:white;
+    text-decoration:none;
+
+    border-radius:6px;
+
+    font-size:12px;
+    font-weight:bold;
+
+    transition:0.15s;
+}
+
+.exercise-btn:hover{
+    background:#43a047;
+    transform:scale(1.08);
+}
+
+.loading{
+    text-align:center;
+    font-size:18px;
+    margin-top:40px;
+}
+
+.repo-count{
+    text-align:center;
+    margin-bottom:15px;
+    color:#555;
+    font-size:14px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>🎮 CaoKy Game Hub</h1>
+
+<div class="repo-count" id="repoCount"></div>
+
+<div id="content" class="loading">
+Loading games...
+</div>
 
 <script>
 
@@ -6,10 +134,11 @@ const USERNAME = "caokydn";
 async function loadRepos(){
 
     const container = document.getElementById("content");
+    const repoCount = document.getElementById("repoCount");
 
     try{
 
-        // Đọc dữ liệu từ games.json cùng thư mục
+        // Đọc danh sách game từ games.json cùng thư mục
         const response = await fetch(
             `./games.json?t=${Date.now()}`
         );
@@ -22,6 +151,7 @@ async function loadRepos(){
 
         const games = await response.json();
 
+        // Kiểm tra dữ liệu JSON
         if(
             !games ||
             typeof games !== "object" ||
@@ -31,6 +161,7 @@ async function loadRepos(){
         }
 
         container.innerHTML = "";
+        container.classList.remove("loading");
 
         // Chuyển dữ liệu JSON thành danh sách repository
         const validRepos = Object.keys(games)
@@ -44,7 +175,7 @@ async function loadRepos(){
                 private: false
             }));
 
-        document.getElementById("repoCount").innerHTML =
+        repoCount.textContent =
             `Total Games: ${validRepos.length}`;
 
         const level1Groups = {};
@@ -96,8 +227,7 @@ async function loadRepos(){
             title.className =
                 "group-title";
 
-            title.innerHTML =
-                `${level1}`;
+            title.textContent = level1;
 
             level1Block.appendChild(title);
 
@@ -129,8 +259,7 @@ async function loadRepos(){
                 subgroupTitle.className =
                     "subgroup-title";
 
-                subgroupTitle.innerHTML =
-                    level2;
+                subgroupTitle.textContent = level2;
 
                 subgroup.appendChild(subgroupTitle);
 
@@ -155,14 +284,13 @@ async function loadRepos(){
                     btn.className =
                         "exercise-btn";
 
-                    btn.href =
-                        gameUrl;
+                    btn.href = gameUrl;
 
-                    btn.target =
-                        "_blank";
+                    btn.target = "_blank";
 
-                    btn.innerHTML =
-                        item.lastChar;
+                    btn.rel = "noopener noreferrer";
+
+                    btn.textContent = item.lastChar;
 
                     buttonContainer.appendChild(btn);
 
@@ -185,7 +313,9 @@ async function loadRepos(){
 
         console.error(error);
 
-        document.getElementById("repoCount").innerHTML = "";
+        repoCount.textContent = "";
+
+        container.classList.remove("loading");
 
         container.innerHTML = `
             <div style="color:red;text-align:center;">
@@ -198,3 +328,6 @@ async function loadRepos(){
 loadRepos();
 
 </script>
+
+</body>
+</html>
