@@ -1,0 +1,492 @@
+# =====================================================
+# 1. Vào GitHub → mở repository juni
+# 2. Bấm Add file → Create new file.
+# 3. Tên file:
+# .github/workflows/update-games.yml
+# 4. Copy code dưới đây vào file YAML
+
+
+#workflow_dispatch chính là cho phép bạn bấm nút chạy thủ công.
+
+#Cách chạy ngay
+
+#Vào repository:
+
+#caokydn/juni → Actions
+
+#Sau đó:
+
+#Chọn workflow Update Games JSON ở bên trái.
+#Bấm Run workflow ở bên phải.
+#Nếu hiện lựa chọn branch, để nguyên branch chính (main).
+#Bấm Run workflow màu xanh.
+#Chờ workflow chạy xong, dấu ✓ màu xanh.
+
+#Sau đó quay lại trang Code của repo juni, bạn sẽ thấy:
+
+#games.json
+
+#GitHub Actions sẽ tự commit file này vào repo.
+
+# =====================================================
+
+# =====================================================
+# UPDATE GAMES.JSON + VOCABULARY
+#
+# Repository:
+# caokydn/juni
+#
+# Quy tắc:
+#
+# 1. Tất cả repository public của caokydn
+#    đều được đưa vào games.json.
+#
+# 2. Chỉ repository có tên KẾT THÚC bằng số 1
+#    mới được quét folder flashcard.
+#
+# 3. Các repository kết thúc bằng 2, 3, 4, 5, 6
+#    KHÔNG quét flashcard.
+#
+# 4. Repository không kết thúc bằng số
+#    vẫn được đưa vào games.json,
+#    nhưng vocab = [].
+#
+# 5. Trong flashcard:
+#    apple.jpg  -> apple
+#    banana.png -> banana
+#
+# 6. jpg, jpeg, png đều được lấy.
+# =====================================================
+
+
+name: Update Games JSON
+
+
+# =====================================================
+# KHI NÀO WORKFLOW CHẠY
+# =====================================================
+
+on:
+
+  # Chạy tự động mỗi 60 phút
+  schedule:
+    - cron: "0 * * * *"
+
+  # Cho phép bấm Run workflow thủ công
+  workflow_dispatch:
+
+
+# =====================================================
+# JOB
+# =====================================================
+
+jobs:
+
+  update-games:
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+
+    steps:
+
+
+      # =================================================
+      # 1. CHECKOUT REPOSITORY JUNI
+      # =================================================
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+
+      # =================================================
+      # 2. TẠO GAMES.JSON
+      # =================================================
+
+      - name: Get repositories and vocabulary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        run: |
+
+          python - <<'PY'
+
+          import json
+          import urllib.request
+          import urllib.error
+          import os
+          import time
+
+
+          # =================================================
+          # THÔNG TIN
+          # =================================================
+
+          username = "caokydn"
+
+          token = os.environ.get("GH_TOKEN")
+
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28"
+          }
+
+          if token:
+              headers["Authorization"] = f"Bearer {token}"
+
+
+          # =================================================
+          # HÀM GỌI GITHUB API
+          # =================================================
+
+          def github_get(url):
+
+              request = urllib.request.Request(
+                  url,
+                  headers=headers
+              )
+
+              try:
+
+                  with urllib.request.urlopen(request) as response:
+
+                      return response.status, json.load(response)
+
+              except urllib.error.HTTPError as error:
+
+                  print(
+                      f"GitHub API error {error.code}: {url}"
+                  )
+
+                  return error.code, None
+
+
+          # =================================================
+          # 1. LẤY DANH SÁCH TẤT CẢ REPOSITORY
+          # =================================================
+
+          repos = []
+
+          page = 1
+
+          while True:
+
+              url = (
+                  f"https://api.github.com/users/"
+                  f"{username}/repos"
+                  f"?per_page=100&page={page}"
+                  f"&type=owner"
+              )
+
+              print(
+                  f"Getting repository page {page}..."
+              )
+
+              status, data = github_get(url)
+
+              if status != 200:
+
+                  print(
+                      "Could not get repositories."
+                  )
+
+                  break
+
+              if not data:
+
+                  break
+
+
+              for repo in data:
+
+                  # Chỉ lấy repository public
+                  if repo.get("private", False):
+
+                      continue
+
+
+                  repo_name = repo["name"]
+
+                  repos.append(repo_name)
+
+
+              page += 1
+
+
+          print()
+          print(
+              f"Found {len(repos)} public repositories."
+          )
+
+
+          # =================================================
+          # 2. SẮP XẾP REPOSITORY
+          # =================================================
+
+          repos.sort(
+              key=lambda x: x.lower()
+          )
+
+
+          # =================================================
+          # 3. TẠO DATA CHO GAMES.JSON
+          # =================================================
+
+          games = {}
+
+
+          # =================================================
+          # 4. XỬ LÝ TỪNG REPOSITORY
+          # =================================================
+
+          for index, repo_name in enumerate(repos, start=1):
+
+              print()
+              print(
+                  f"[{index}/{len(repos)}] {repo_name}"
+              )
+
+
+              # -------------------------------------------------
+              # Mặc định:
+              # Không có vocabulary
+              # -------------------------------------------------
+
+              vocab = []
+
+
+              # -------------------------------------------------
+              # CHỈ QUÉT REPO KẾT THÚC BẰNG "1"
+              # -------------------------------------------------
+
+              if repo_name.endswith("1"):
+
+                  print(
+                      "  -> Ends with 1: checking flashcard..."
+                  )
+
+
+                  url = (
+                      f"https://api.github.com/repos/"
+                      f"{username}/{repo_name}/contents/flashcard"
+                  )
+
+
+                  status, data = github_get(url)
+
+
+                  # -------------------------------------------------
+                  # Folder flashcard tồn tại
+                  # -------------------------------------------------
+
+                  if status == 200 and isinstance(data, list):
+
+
+                      for item in data:
+
+                          # Chỉ lấy file
+                          if item.get("type") != "file":
+
+                              continue
+
+
+                          filename = item.get(
+                              "name",
+                              ""
+                          )
+
+
+                          # Tách phần mở rộng
+                          lower_name = filename.lower()
+
+
+                          if lower_name.endswith(".jpg"):
+
+                              word = filename[:-4]
+
+
+                          elif lower_name.endswith(".jpeg"):
+
+                              word = filename[:-5]
+
+
+                          elif lower_name.endswith(".png"):
+
+                              word = filename[:-4]
+
+
+                          else:
+
+                              continue
+
+
+                          # Không lấy tên rỗng
+                          if word:
+
+                              vocab.append(word)
+
+
+                      # Sắp xếp vocabulary
+                      vocab.sort(
+                          key=lambda x: x.lower()
+                      )
+
+
+                      print(
+                          f"  -> Found {len(vocab)} vocabulary."
+                      )
+
+
+                  # -------------------------------------------------
+                  # Không có folder flashcard
+                  # -------------------------------------------------
+
+                  elif status == 404:
+
+                      print(
+                          "  -> No flashcard folder."
+                      )
+
+
+                  # -------------------------------------------------
+                  # Lỗi khác
+                  # -------------------------------------------------
+
+                  else:
+
+                      print(
+                          f"  -> Could not read flashcard "
+                          f"(HTTP {status})."
+                      )
+
+
+              else:
+
+                  print(
+                      "  -> Does not end with 1: "
+                      "skip vocabulary scan."
+                  )
+
+
+              # =================================================
+              # 5. LƯU REPO
+              # =================================================
+
+              games[repo_name] = {
+                  "vocab": vocab
+              }
+
+
+          # =================================================
+          # 6. GHI games.json
+          # =================================================
+
+          with open(
+              "games.json",
+              "w",
+              encoding="utf-8"
+          ) as file:
+
+              json.dump(
+                  games,
+                  file,
+                  ensure_ascii=False,
+                  indent=2
+              )
+
+
+          # =================================================
+          # 7. THỐNG KÊ
+          # =================================================
+
+          scanned = sum(
+              1
+              for repo in repos
+              if repo.endswith("1")
+          )
+
+          vocab_count = sum(
+              len(data["vocab"])
+              for data in games.values()
+          )
+
+
+          print()
+          print("======================================")
+          print("GAMES.JSON UPDATED")
+          print("======================================")
+
+          print(
+              f"Total repositories : {len(repos)}"
+          )
+
+          print(
+              f"Repositories scanned for vocab : {scanned}"
+          )
+
+          print(
+              f"Total vocabulary : {vocab_count}"
+          )
+
+          print("======================================")
+
+
+          PY
+
+
+      # =====================================================
+      # 3. HIỂN THỊ GAMES.JSON
+      # =====================================================
+
+      - name: Show games.json
+        run: |
+
+          echo "================================"
+          echo "games.json"
+          echo "================================"
+
+          cat games.json
+
+
+      # =====================================================
+      # 4. KIỂM TRA FILE JSON
+      # =====================================================
+
+      - name: Validate games.json
+        run: |
+
+          python -m json.tool games.json > /dev/null
+
+          echo "games.json is valid JSON."
+
+
+      # =====================================================
+      # 5. COMMIT NẾU CÓ THAY ĐỔI
+      # =====================================================
+
+      - name: Commit changes
+        run: |
+
+          git config user.name "github-actions[bot]"
+
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+
+          git add games.json
+
+
+          if git diff --cached --quiet; then
+
+            echo "No changes to games.json."
+
+          else
+
+            git commit \
+              -m "Update games.json"
+
+            git push
+
+          fi
