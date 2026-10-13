@@ -138,7 +138,7 @@ async function loadRepos(){
 
     try{
 
-        // Đọc danh sách game từ games.json cùng thư mục
+        // Đọc games.json cùng thư mục với index.html
         const response = await fetch(
             `./games.json?t=${Date.now()}`
         );
@@ -163,7 +163,7 @@ async function loadRepos(){
         container.innerHTML = "";
         container.classList.remove("loading");
 
-        // Chuyển dữ liệu JSON thành danh sách repository
+        // Lấy tên repository từ các khóa trong JSON
         const validRepos = Object.keys(games)
             .filter(repoName =>
                 repoName &&
@@ -171,8 +171,7 @@ async function loadRepos(){
                 `${USERNAME}.github.io`.toLowerCase()
             )
             .map(repoName => ({
-                name: repoName,
-                private: false
+                name: repoName
             }));
 
         repoCount.textContent =
@@ -270,31 +269,31 @@ async function loadRepos(){
                     "exercise-buttons";
 
                 level2Groups[level2]
-                .sort((a,b)=>
-                    a.lastChar.localeCompare(b.lastChar)
-                )
-                .forEach(item => {
+                    .sort((a,b) =>
+                        a.lastChar.localeCompare(b.lastChar)
+                    )
+                    .forEach(item => {
 
-                    const gameUrl =
-                        `https://${USERNAME}.github.io/${item.repo}/`;
+                        const gameUrl =
+                            `https://${USERNAME}.github.io/${item.repo}/`;
 
-                    const btn =
-                        document.createElement("a");
+                        const btn =
+                            document.createElement("a");
 
-                    btn.className =
-                        "exercise-btn";
+                        btn.className =
+                            "exercise-btn";
 
-                    btn.href = gameUrl;
+                        btn.href = gameUrl;
 
-                    btn.target = "_blank";
+                        btn.target = "_blank";
 
-                    btn.rel = "noopener noreferrer";
+                        btn.rel = "noopener noreferrer";
 
-                    btn.textContent = item.lastChar;
+                        btn.textContent = item.lastChar;
 
-                    buttonContainer.appendChild(btn);
+                        buttonContainer.appendChild(btn);
 
-                });
+                    });
 
                 subgroup.appendChild(buttonContainer);
 
